@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PullDown — Video & Audio Downloader</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #12121a;
+    --bg3: #1a1a26;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --accent: #7c5cfc;
+    --accent2: #5eead4;
+    --text: #f0eeff;
+    --text2: #9b97b8;
+    --text3: #5c5878;
+    --card: #13131e;
+    --radius: 14px;
+    --glow: 0 0 40px rgba(124,92,252,0.18);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background orbs */
+  .bg-orb {
+    position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+    filter: blur(80px); opacity: 0.25;
+  }
+  .orb1 { width: 500px; height: 500px; background: #7c5cfc; top: -150px; left: -100px; }
+  .orb2 { width: 400px; height: 400px; background: #5eead4; bottom: -100px; right: -80px; }
+  .orb3 { width: 300px; height: 300px; background: #fc5c7d; top: 40%; left: 40%; }
+
+  /* Layout */
+  .page { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; padding: 60px 24px 80px; }
+
+  /* Header */
+  header { text-align: center; margin-bottom: 56px; }
+  .logo {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--text2);
+    margin-bottom: 28px;
+  }
+  .logo-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    box-shadow: 0 0 12px var(--accent); animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  h1 {
+    font-family: 'Syne', sans-serif; font-size: clamp(38px, 7vw, 60px);
+    font-weight: 800; line-height: 1.05; margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff 0%, #c4b8ff 50%, #5eead4 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .subtitle { font-size: 16px; color: var(--text2); font-weight: 300; line-height: 1.6; }
+
+  /* Platform chips */
+  .platforms {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 8px; margin-top: 24px;
+  }
+  .platform-chip {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+    padding: 5px 12px; border-radius: 99px;
+    border: 1px solid var(--border2); color: var(--text2);
+    background: rgba(255,255,255,0.04);
+    transition: all 0.2s;
+  }
+  .platform-chip:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,92,252,0.1); }
+
+  /* Input section */
+  .input-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 28px;
+    box-shadow: var(--glow);
+    transition: border-color 0.3s;
+  }
+  .input-card:focus-within { border-color: rgba(124,92,252,0.5); }
+  .input-label { font-size: 12px; font-weight: 500; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; display: block; }
+  .input-row { display: flex; gap: 10px; }
+  .url-input {
+    flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 18px; font-size: 14px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s;
+  }
+  .url-input::placeholder { color: var(--text3); }
+  .url-input:focus { border-color: var(--accent); }
+  .fetch-btn {
+    background: var(--accent); color: #fff; border: none;
+    border-radius: 12px; padding: 14px 24px; font-size: 14px; font-weight: 600;
+    font-family: 'Syne', sans-serif; cursor: pointer; white-space: nowrap;
+    transition: all 0.2s; letter-spacing: 0.04em;
+    box-shadow: 0 0 20px rgba(124,92,252,0.4);
+  }
+  .fetch-btn:hover { background: #9575ff; box-shadow: 0 0 30px rgba(124,92,252,0.6); transform: translateY(-1px); }
+  .fetch-btn:active { transform: translateY(0); }
+  .fetch-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* Options row */
+  .options-row {
+    display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;
+  }
+  .option-toggle {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    font-size: 13px; color: var(--text2);
+  }
+  .toggle-box {
+    width: 18px; height: 18px; border: 1.5px solid var(--border2);
+    border-radius: 5px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .toggle-box.checked { background: var(--accent); border-color: var(--accent); }
+  .toggle-box.checked::after { content: '✓'; font-size: 11px; color: #fff; font-weight: 700; }
+
+  /* Status */
+  .status-bar {
+    padding: 14px 18px; border-radius: 12px; font-size: 13px;
+    display: none; margin-bottom: 20px; align-items: center; gap: 10px;
+    animation: fadeIn 0.3s ease;
+  }
+  .status-bar.show { display: flex; }
+  .status-bar.loading { background: rgba(124,92,252,0.1); border: 1px solid rgba(124,92,252,0.3); color: #c4b8ff; }
+  .status-bar.error { background: rgba(252,92,125,0.1); border: 1px solid rgba(252,92,125,0.3); color: #ff9eb8; }
+  .spin { display: inline-block; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Results */
+  #results { display: none; animation: fadeIn 0.4s ease; }
+
+  /* Section card */
+  .section-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px; margin-bottom: 16px;
+  }
+  .section-head {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3);
+    margin-bottom: 18px;
+  }
+  .section-head-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); flex-shrink: 0; }
+
+  /* Video info */
+  .vid-info { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+  .vid-icon {
+    width: 52px; height: 52px; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(124,92,252,0.3), rgba(94,234,212,0.2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0; border: 1px solid var(--border2);
+  }
+  .vid-platform { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--text); }
+  .vid-url { font-size: 12px; color: var(--text3); margin-top: 3px; word-break: break-all; }
+
+  /* Download buttons */
+  .dl-btn {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px; border-radius: 12px;
+    border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+    cursor: pointer; text-decoration: none; color: inherit;
+    transition: all 0.2s; margin-bottom: 10px;
+  }
+  .dl-btn:last-child { margin-bottom: 0; }
+  .dl-btn:hover { border-color: var(--accent); background: rgba(124,92,252,0.08); transform: translateX(3px); }
+  .dl-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .dl-icon.video { background: rgba(124,92,252,0.2); }
+  .dl-icon.audio { background: rgba(94,234,212,0.15); }
+  .dl-info { flex: 1; }
+  .dl-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .dl-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .dl-arrow { font-size: 20px; color: var(--text3); transition: color 0.2s; }
+  .dl-btn:hover .dl-arrow { color: var(--accent); }
+
+  /* Quality selector */
+  .quality-pills { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .q-pill {
+    font-size: 12px; padding: 5px 12px; border-radius: 99px;
+    border: 1px solid var(--border); color: var(--text2); cursor: pointer;
+    background: transparent; font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .q-pill:hover, .q-pill.active { border-color: var(--accent); color: var(--accent); background: rgba(124,92,252,0.1); }
+
+  /* Social links */
+  .social-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .social-link {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; border-radius: 12px;
+    border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+    text-decoration: none; color: var(--text); transition: all 0.2s;
+  }
+  .social-link:hover { border-color: var(--border2); background: rgba(255,255,255,0.06); transform: translateY(-2px); }
+  .social-icon { font-size: 20px; flex-shrink: 0; }
+  .social-name { font-size: 13px; font-weight: 500; }
+  .social-handle { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+  /* Notice */
+  .notice {
+    text-align: center; font-size: 12px; color: var(--text3);
+    margin-top: 40px; line-height: 1.7;
+  }
+  .notice a { color: var(--text2); text-decoration: underline; text-underline-offset: 3px; }
+
+  /* Copy link button */
+  .copy-btn {
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px; font-size: 12px; color: var(--text2);
+    cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif;
+  }
+  .copy-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    .input-row { flex-direction: column; }
+    h1 { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-orb orb1"></div>
+<div class="bg-orb orb2"></div>
+<div class="bg-orb orb3"></div>
+
+<div class="page">
+
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      PullDown
+    </div>
+    <h1>Download<br>Anything</h1>
+    <p class="subtitle">Paste any video link — get the video, audio, and all social links instantly</p>
+    <div class="platforms">
+      <span class="platform-chip">YouTube</span>
+      <span class="platform-chip">Instagram</span>
+      <span class="platform-chip">Twitter / X</span>
+      <span class="platform-chip">TikTok</span>
+      <span class="platform-chip">Facebook</span>
+      <span class="platform-chip">Reddit</span>
+      <span class="platform-chip">Vimeo</span>
+      <span class="platform-chip">SoundCloud</span>
+      <span class="platform-chip">Twitch</span>
+      <span class="platform-chip">Pinterest</span>
+    </div>
+  </header>
+
+  <div class="input-card">
+    <span class="input-label">Paste your URL</span>
+    <div class="input-row">
+      <input type="text" class="url-input" id="urlInput" placeholder="https://youtube.com/watch?v=..." autocomplete="off" spellcheck="false" />
+      <button class="fetch-btn" id="fetchBtn" onclick="handleFetch()">
+        ↓ Fetch
+      </button>
+    </div>
+    <div class="options-row">
+      <label class="option-toggle" onclick="toggleOpt('optVideo')">
+        <div class="toggle-box checked" id="optVideo"></div>
+        <span>Video</span>
+      </label>
+      <label class="option-toggle" onclick="toggleOpt('optAudio')">
+        <div class="toggle-box checked" id="optAudio"></div>
+        <span>Audio / Song</span>
+      </label>
+      <label class="option-toggle" onclick="toggleOpt('optSocial')">
+        <div class="toggle-box checked" id="optSocial"></div>
+        <span>Social Links</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="status-bar loading" id="statusLoading">
+    <span class="spin">◌</span>
+    <span id="statusMsg">Fetching media info…</span>
+  </div>
+  <div class="status-bar error" id="statusError">
+    <span>⚠</span>
+    <span id="errorMsg"></span>
+  </div>
+
+  <div id="results">
+
+    <!-- Video info + downloads -->
+    <div class="section-card" id="downloadSection">
+      <div class="vid-info" id="vidInfo"></div>
+
+      <div class="section-head">
+        <div class="section-head-dot"></div>
+        Download
+      </div>
+
+      <div class="quality-pills" id="qualityPills">
+        <button class="q-pill active" onclick="setQuality('1080', this)">1080p</button>
+        <button class="q-pill" onclick="setQuality('720', this)">720p</button>
+        <button class="q-pill" onclick="setQuality('480', this)">480p</button>
+        <button class="q-pill" onclick="setQuality('360', this)">360p</button>
+      </div>
+
+      <div id="dlOptions"></div>
+    </div>
+
+    <!-- Social links -->
+    <div class="section-card" id="socialSection" style="display:none">
+      <div class="section-head">
+        <div class="section-head-dot" style="background:#fc5c7d"></div>
+        Social Media Links
+      </div>
+      <div class="social-grid" id="socialGrid"></div>
+    </div>
+
+  </div>
+
+  <div class="notice">
+    Downloads powered by <a href="https://cobalt.tools" target="_blank">cobalt.tools</a> open API.<br>
+    Only download content you have rights to. Respect creator copyright.
+  </div>
+
+</div>
+
+<script>
+let selectedQuality = "1080";
+let currentUrl = "";
+let opts = { optVideo: true, optAudio: true, optSocial: true };
+
+const COBALT = "https://api.cobalt.tools";
+
+const platformData = {
+  "youtube.com": { name: "YouTube", icon: "▶", color: "#ff0000" },
+  "youtu.be": { name: "YouTube", icon: "▶", color: "#ff0000" },
+  "instagram.com": { name: "Instagram", icon: "📷", color: "#e1306c" },
+  "twitter.com": { name: "Twitter / X", icon: "✦", color: "#1da1f2" },
+  "x.com": { name: "Twitter / X", icon: "✦", color: "#1da1f2" },
+  "tiktok.com": { name: "TikTok", icon: "♪", color: "#010101" },
+  "facebook.com": { name: "Facebook", icon: "f", color: "#1877f2" },
+  "fb.watch": { name: "Facebook", icon: "f", color: "#1877f2" },
+  "reddit.com": { name: "Reddit", icon: "◉", color: "#ff4500" },
+  "vimeo.com": { name: "Vimeo", icon: "◈", color: "#1ab7ea" },
+  "soundcloud.com": { name: "SoundCloud", icon: "☁", color: "#ff5500" },
+  "twitch.tv": { name: "Twitch", icon: "◆", color: "#9146ff" },
+  "pinterest.com": { name: "Pinterest", icon: "P", color: "#e60023" },
+};
+
+const socialProfiles = {
+  "youtube.com": { url: "https://youtube.com", label: "YouTube", icon: "▶" },
+  "youtu.be": { url: "https://youtube.com", label: "YouTube", icon: "▶" },
+  "instagram.com": { url: "https://instagram.com", label: "Instagram", icon: "📷" },
+  "twitter.com": { url: "https://twitter.com", label: "Twitter", icon: "✦" },
+  "x.com": { url: "https://x.com", label: "X", icon: "✦" },
+  "tiktok.com": { url: "https://tiktok.com", label: "TikTok", icon: "♪" },
+  "facebook.com": { url: "https://facebook.com", label: "Facebook", icon: "f" },
+  "reddit.com": { url: "https://reddit.com", label: "Reddit", icon: "◉" },
+  "vimeo.com": { url: "https://vimeo.com", label: "Vimeo", icon: "◈" },
+  "soundcloud.com": { url: "https://soundcloud.com", label: "SoundCloud", icon: "☁" },
+  "twitch.tv": { url: "https://twitch.tv", label: "Twitch", icon: "◆" },
+  "pinterest.com": { url: "https://pinterest.com", label: "Pinterest", icon: "P" },
+  "linkedin.com": { url: "https://linkedin.com", label: "LinkedIn", icon: "in" },
+};
+
+function toggleOpt(id) {
+  opts[id] = !opts[id];
+  const el = document.getElementById(id);
+  el.classList.toggle("checked", opts[id]);
+}
+
+function setQuality(q, btn) {
+  selectedQuality = q;
+  document.querySelectorAll(".q-pill").forEach(p => p.classList.remove("active"));
+  btn.classList.add("active");
+  if (currentUrl) handleFetch();
+}
+
+function getPlatform(url) {
+  try {
+    const host = new URL(url).hostname.replace("www.", "");
+    for (const key of Object.keys(platformData)) {
+      if (host.includes(key)) return platformData[key];
+    }
+    return { name: host, icon: "🔗", color: "#7c5cfc" };
+  } catch { return { name: "Unknown", icon: "🔗", color: "#7c5cfc" }; }
+}
+
+function getSocialLinks(url) {
+  try {
+    const host = new URL(url).hostname.replace("www.", "");
+    const links = [];
+    // Add the current platform
+    for (const key of Object.keys(socialProfiles)) {
+      if (host.includes(key)) {
+        links.push(socialProfiles[key]);
+        break;
+      }
+    }
+    // Add related platforms
+    const related = {
+      "youtube.com": ["instagram.com", "twitter.com", "tiktok.com"],
+      "youtu.be": ["instagram.com", "twitter.com", "tiktok.com"],
+      "instagram.com": ["youtube.com", "tiktok.com", "twitter.com"],
+      "tiktok.com": ["instagram.com", "youtube.com", "twitter.com"],
+      "twitter.com": ["instagram.com", "youtube.com"],
+      "x.com": ["instagram.com", "youtube.com"],
+      "facebook.com": ["instagram.com", "youtube.com"],
+      "reddit.com": ["twitter.com", "youtube.com"],
+      "soundcloud.com": ["youtube.com", "instagram.com"],
+      "vimeo.com": ["youtube.com", "instagram.com"],
+    };
+    const currentKey = Object.keys(related).find(k => host.includes(k));
+    if (currentKey) {
+      related[currentKey].forEach(rel => {
+        if (socialProfiles[rel]) links.push(socialProfiles[rel]);
+      });
+    }
+    return links;
+  } catch { return []; }
+}
+
+function showLoading(msg) {
+  document.getElementById("statusLoading").classList.add("show");
+  document.getElementById("statusError").classList.remove("show");
+  document.getElementById("statusMsg").textContent = msg || "Fetching media info…";
+  document.getElementById("results").style.display = "none";
+}
+
+function showError(msg) {
+  document.getElementById("statusLoading").classList.remove("show");
+  document.getElementById("statusError").classList.add("show");
+  document.getElementById("errorMsg").textContent = msg;
+}
+
+function clearStatus() {
+  document.getElementById("statusLoading").classList.remove("show");
+  document.getElementById("statusError").classList.remove("show");
+}
+
+function buildVidInfo(platform, url) {
+  document.getElementById("vidInfo").innerHTML = `
+    <div class="vid-icon">${platform.icon}</div>
+    <div>
+      <div class="vid-platform">${platform.name}</div>
+      <div class="vid-url">${url.length > 60 ? url.slice(0, 60) + "…" : url}</div>
+    </div>
+    <button class="copy-btn" onclick="copyUrl('${url.replace(/'/g, "\\'")}')">Copy URL</button>
+  `;
+}
+
+function copyUrl(url) {
+  navigator.clipboard.writeText(url).catch(() => {});
+}
+
+async function fetchWithCobalt(url, mode, quality) {
+  const body = { url, filenameStyle: "pretty" };
+  if (mode === "audio") {
+    body.downloadMode = "audio";
+    body.audioFormat = "mp3";
+  } else {
+    body.videoQuality = quality;
+  }
+  const res = await fetch(COBALT, {
+    method: "POST",
+    headers: { "Accept": "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error("API error " + res.status);
+  return res.json();
+}
+
+async function handleFetch() {
+  const raw = document.getElementById("urlInput").value.trim();
+  if (!raw) { showError("Please paste a URL first."); return; }
+
+  let url;
+  try { url = new URL(raw); }
+  catch { showError("That doesn't look like a valid URL. Include https://"); return; }
+
+  currentUrl = raw;
+  const btn = document.getElementById("fetchBtn");
+  btn.disabled = true;
+  btn.textContent = "…";
+  showLoading("Contacting download service…");
+
+  const platform = getPlatform(raw);
+  buildVidInfo(platform, raw);
+
+  const dlEl = document.getElementById("dlOptions");
+  dlEl.innerHTML = "";
+
+  let gotAny = false;
+
+  try {
+    if (opts.optVideo) {
+      showLoading("Fetching video link…");
+      try {
+        const data = await fetchWithCobalt(raw, "video", selectedQuality);
+        if (data.url || (data.picker && data.picker.length)) {
+          gotAny = true;
+          if (data.url) {
+            dlEl.innerHTML += makeDownloadBtn(data.url, "🎬", "video", "Download Video", `${selectedQuality}p · MP4 · Best quality`);
+          } else if (data.picker) {
+            data.picker.slice(0, 3).forEach((item, i) => {
+              dlEl.innerHTML += makeDownloadBtn(item.url, "🎬", "video", `Download Media ${i+1}`, item.type || "video");
+            });
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (opts.optAudio) {
+      showLoading("Fetching audio link…");
+      try {
+        const data = await fetchWithCobalt(raw, "audio", selectedQuality);
+        if (data.url) {
+          gotAny = true;
+          dlEl.innerHTML += makeDownloadBtn(data.url, "🎵", "audio", "Download Audio / Song", "MP3 · Best quality · Audio only");
+        }
+      } catch (e) {}
+    }
+
+    if (!gotAny) {
+      dlEl.innerHTML = `
+        <div style="padding:16px;text-align:center;color:var(--text2);font-size:13px;line-height:1.7">
+          ⚠ Could not fetch download links for this URL.<br>
+          <span style="color:var(--text3)">The platform may be private, region-locked, or unsupported.</span><br><br>
+          <a href="https://cobalt.tools" target="_blank" style="color:var(--accent);text-decoration:underline">Try directly on cobalt.tools →</a>
+        </div>`;
+    }
+
+    clearStatus();
+    document.getElementById("downloadSection").style.display = "block";
+
+  } catch (err) {
+    clearStatus();
+    dlEl.innerHTML = `
+      <div style="padding:16px;color:var(--text2);font-size:13px;line-height:1.8">
+        ⚠ Could not reach download service.<br>
+        <span style="color:var(--text3)">Check your internet connection or try again.</span><br><br>
+        <a href="https://cobalt.tools" target="_blank" style="color:var(--accent)">Try cobalt.tools directly →</a>
+      </div>`;
+    document.getElementById("downloadSection").style.display = "block";
+  }
+
+  // Social links
+  if (opts.optSocial) {
+    const links = getSocialLinks(raw);
+    if (links.length > 0) {
+      document.getElementById("socialSection").style.display = "block";
+      document.getElementById("socialGrid").innerHTML = links.map(l => `
+        <a class="social-link" href="${l.url}" target="_blank" rel="noopener">
+          <span class="social-icon">${l.icon}</span>
+          <div>
+            <div class="social-name">${l.label}</div>
+            <div class="social-handle">Open platform</div>
+          </div>
+        </a>`).join("");
+    }
+  }
+
+  document.getElementById("results").style.display = "block";
+  btn.disabled = false;
+  btn.textContent = "↓ Fetch";
+}
+
+function makeDownloadBtn(href, icon, type, name, sub) {
+  return `
+    <a class="dl-btn" href="${href}" target="_blank" rel="noopener" download>
+      <div class="dl-icon ${type}">${icon}</div>
+      <div class="dl-info">
+        <div class="dl-name">${name}</div>
+        <div class="dl-sub">${sub}</div>
+      </div>
+      <span class="dl-arrow">↓</span>
+    </a>`;
+}
+
+document.getElementById("urlInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") handleFetch();
+});
+
+// Auto-paste on focus if clipboard has URL
+document.getElementById("urlInput").addEventListener("focus", async () => {
+  if (document.getElementById("urlInput").value) return;
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text.startsWith("http")) {
+      document.getElementById("urlInput").value = text;
+    }
+  } catch {}
+});
+</script>
+</body>
+</html>
